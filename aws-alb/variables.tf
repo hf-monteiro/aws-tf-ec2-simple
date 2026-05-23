@@ -13,7 +13,7 @@ variable "vpc_id" {
 variable "alb_vpc_id" {
   description = "ALB VPC ID"
   type        = list(string)
-  default     = ["subnet-0000w0000","subnet-04affbd43b99ee847"]
+  default     = ["subnet-0000w0000", "subnet-04affbd43b99ee847"]
 }
 
 variable "az" {

@@ -7,7 +7,7 @@ provider "aws" {
 ################################################################################
 
 ## db_subnet_group ##
-module "subnet_group"{
+module "subnet_group" {
   source     = "../modules/db_subnet_group"
   name       = "database_subnet_group"
   subnet_ids = var.subnet_ids
@@ -19,7 +19,7 @@ module "subnet_group"{
 
 ## sg_security_group ##
 module "security_group" {
-  source  = "../modules/sg_security_group"
+  source      = "../modules/sg_security_group"
   name        = var.name
   description = "Master PostgreSQL security group"
   vpc_id      = var.vpc_id
@@ -75,7 +75,7 @@ module "security_group" {
       description = "example app Scheduler Service (QSS) slave REST engine."
       cidr_blocks = var.cidr_blocks
     },
-      {
+    {
       from_port   = 0
       to_port     = 0
       protocol    = "-1"
@@ -91,6 +91,7 @@ module "security_group" {
       to_port     = 65535
       protocol    = "all"
       description = "All traffic out"
+      # Lab/demo CIDR: restrict this to trusted networks before production use.
       cidr_blocks = "0.0.0.0/0"
     }
   ]
@@ -114,7 +115,7 @@ module "master" {
   port     = var.port
 
   multi_az               = true
-  db_subnet_group_name   = module.subnet_group.db_subnet_group_name 
+  db_subnet_group_name   = module.subnet_group.db_subnet_group_name
   vpc_security_group_ids = [module.security_group.security_group_id]
 
   maintenance_window              = "Mon:00:00-Mon:03:00"

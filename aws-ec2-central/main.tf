@@ -30,13 +30,13 @@ module "ec2" {
   instance_type               = var.instance_type
   availability_zone           = var.availability_zone
   subnet_id                   = var.subnet_id
-  vpc_security_group_ids      = var.ec2_security_group_id 
+  vpc_security_group_ids      = var.ec2_security_group_id
   associate_public_ip_address = true
   hibernation                 = true
   key_name                    = var.key_name
   user_data                   = file("user_data.tpl")
   iam_instance_profile        = var.ec2_role
-  enable_volume_tags = true
+  enable_volume_tags          = true
   root_block_device = [
     {
       encrypted   = true

@@ -65,7 +65,7 @@ variable "ec2_role" {
 }
 
 variable "ec2_security_group_id" {
-   description = "Security Group"
-   type        = list(string)
-   default     = ["sg-0000w0000"]
- }
+  description = "Security Group"
+  type        = list(string)
+  default     = ["sg-0000w0000"]
+}
