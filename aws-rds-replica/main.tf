@@ -8,7 +8,7 @@ provider "aws" {
 
 ## sg_security_group ##
 module "security_group" {
-  source  = "../modules/sg_security_group"
+  source = "../modules/sg_security_group"
 
   name        = var.name
   description = "Replica PostgreSQL security group"
@@ -65,7 +65,7 @@ module "security_group" {
       description = "example app Scheduler Service (QSS) slave REST engine."
       cidr_blocks = var.cidr_blocks
     },
-      {
+    {
       from_port   = 0
       to_port     = 0
       protocol    = "-1"
@@ -81,6 +81,7 @@ module "security_group" {
       to_port     = 65535
       protocol    = "all"
       description = "All traffic out"
+      # Lab/demo CIDR: restrict this to trusted networks before production use.
       cidr_blocks = "0.0.0.0/0"
     }
   ]
@@ -98,11 +99,11 @@ module "replica" {
   identifier = "${var.name}-replica"
 
   # Source database. For cross-region use db_instance_arn
-  replicate_source_db  = var.master_db_instance_id
+  replicate_source_db = var.master_db_instance_id
 
-  engine               = var.engine
-  engine_version       = var.engine_version
-  instance_class       = var.instance_class
+  engine         = var.engine
+  engine_version = var.engine_version
+  instance_class = var.instance_class
 
   allocated_storage     = var.allocated_storage
   max_allocated_storage = var.max_allocated_storage

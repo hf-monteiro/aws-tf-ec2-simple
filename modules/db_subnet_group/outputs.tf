@@ -10,5 +10,5 @@ output "db_subnet_group_arn" {
 
 output "db_subnet_group_name" {
   description = "The db subnet group name"
-  value       = try(aws_db_subnet_group.this[0].name,"")
+  value       = try(aws_db_subnet_group.this[0].name, "")
 }

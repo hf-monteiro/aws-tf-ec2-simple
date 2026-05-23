@@ -47,9 +47,10 @@ variable "username" {
 }
 
 variable "password" {
-  description = "DB user pass"
+  description = "DB user pass. Lab/demo only; pass this from tfvars or Secrets Manager in real environments."
   type        = string
-  default     = "Password123"
+  sensitive   = true
+  default     = null
 }
 
 
