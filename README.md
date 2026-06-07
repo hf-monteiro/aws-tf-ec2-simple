@@ -1,86 +1,86 @@
-# A simple diagram about the solution:
+# EC2, ALB, and RDS Terraform Examples
 
-![diagram](diagram/project01.png)
+Terraform and Terragrunt examples for EC2 with ALB load balancing, RDS master/replica pattern, IAM roles, security groups, and S3 integration. Includes a central/failover EC2 pair for high-availability patterns.
 
-# Prerequisites to run example Infrastructure 
-* Create 2 S3 Buckets, one for storing all the conf/installation scripts *(example name:example-app-files)* and a second bucket for the Terraform state files *(example name: example-app-tfstate)*
-* To have or create a VPC with at least 3 subnets (on different AZ's) where the resources are going to be created.
-* Create key pairs on AWS to access via RDP to the Windows EC2 instances.
-* [Install](https://learn.hashicorp.com/tutorials/terraform/install-cli) terraform in the machines that will execute.
-* [Install](https://terragrunt.gruntwork.io/docs/getting-started/install/) terragrunt in the machines that will execute.
-* [Install](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) AWS CLI in the machines that will execute.
-* To have or create a IAM user with admin permissions to create and manage the AWS resources.
-# How to create example Infrastructure
-## AWS example variables and parameters
-Since the development of the TF templates and all of the infrastructure was done on a example AWS account, information like vpc id, subnets, ip’s... is specific for our
-environment.
-This list of parameters are the ones that needs to be modified in the variables file on Terraform in order for example team to spin up the AWS components on their environment:
-* VPC ID
-* Subnet ID
-* AMI ID
-* Key Pairs
-* Region
-* Availability Zone
-* Terraform state bucket path *(changed in terragrunt file)*
+## Architecture
 
-Before we start, please make sure you don't see any .terraform file in the terraform modules, if so, please proceed to delete them. 
-1. With your IAM programmatically credentials, login to  AWS CLI running:
+```mermaid
+flowchart TD
+    Internet["Internet"] --> ALB["Application Load Balancer\n(HTTPS · HTTP redirect)"]
+
+    subgraph VPC["VPC"]
+        subgraph Public["Public Subnets"]
+            ALB
+        end
+
+        subgraph Private["Private Subnets"]
+            EC2C["EC2 Central\n(primary instance)\nIAM Role + S3 access"]
+            EC2F["EC2 Failover\n(standby instance)\nIAM Role + S3 access"]
+            RDSM["RDS Master\n(write)"]
+            RDSR["RDS Replica\n(read)"]
+        end
+    end
+
+    ALB --> EC2C
+    ALB --> EC2F
+    EC2C --> RDSM
+    EC2F --> RDSM
+    RDSM -- "async replication" --> RDSR
+    EC2C & EC2F -- "config/scripts" --> S3["S3 Bucket\nFiles + Scripts"]
+
+    SM["Secrets Manager\nDB credentials"] -. "get secret" .-> EC2C & EC2F
+```
+
+## Repository Structure
+
+```
+├── aws-ec2-central/     # Primary EC2 instance + IAM role
+├── aws-ec2-failover/    # Failover EC2 instance + IAM role
+├── aws-alb/             # Application Load Balancer
+├── aws-rds-master/      # RDS master instance
+├── aws-rds-replica/     # RDS read replica
+├── modules/
+│   ├── alb/             # ALB module
+│   ├── ec2_instance/    # EC2 instance module
+│   ├── sg_security_group/ # Security group module
+│   └── db_instance/     # RDS instance module
+└── terragrunt.hcl       # Terragrunt root config
+```
+
+## Prerequisites
+
+- [Terraform](https://learn.hashicorp.com/tutorials/terraform/install-cli) installed
+- [Terragrunt](https://terragrunt.gruntwork.io/docs/getting-started/install/) installed
+- [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) configured
+- Existing VPC with at least 3 subnets across different AZs
+- S3 buckets for config files and Terraform remote state
+- IAM user with admin permissions
+- Key pair for EC2 access
+
+## Variables to Update
+
+Before deploying, update the following in each module's `variables.tf`:
+
+| Variable | Description |
+|----------|-------------|
+| `vpc_id` | Target VPC ID |
+| `subnet_id` | Subnet ID for EC2 placement |
+| `ami_id` | AMI ID for EC2 instances |
+| `key_name` | EC2 key pair name |
+| `region` | AWS region |
+| `availability_zone` | AZ for EC2/RDS placement |
+
+## Usage
+
 ```shell
 aws configure
- ```
-2. Run the following terragrunt command to initialize Terraform modules 
-```shell
- terragrunt init 
- ```
-3. Run the following terragrunt command to plan all the infrastructure that terraform will deploy on AWS:
-```shell
- terragrunt plan 
- ```
-4. Run the following terragrunt command to deploy all your example modules to AWS.
-```shell
- terragrunt run-all apply --auto-approve 
- ```
-5. Test all your AWS resources have been created by Terraform.
 
-6. To delete the infrastructure created by Terraform, run the command:
-```shell
- terragrunt run-all destroy --auto-approve 
- ``` 
-# How to use AWS Secrets Manager
-AWS Secrets Manager is used to store sensitive information like passwords, keys, endpoints... and use it securely in scripts, files and templates wihtout harcoding or having it in plain text.
-
-These are the steps to create a new secret:
-* Open the secrets manager console at https://console.aws.amazon.com/secretsmanager/
-* Chose Store a new secret:
-  * For Secret type, choose Other type of secret
-  * Create a key/value pair to store the data that will be saved in json format
-  * For the encryption key select aws/secretsmanager as the default choice
-  * Click on Next
-* Enter a name and optional description for the secret
-* Give proper permissions to the role that is going to call or use the secret (explained with more detail next)
-* Choose next and then store to create the secret
-
-## Secret access and permissions
-In order to access the secret we need to give permissions to the role or IAM user that will use it and to do that we need to edit the secret's permissions and add this policy, modifying the ARN with the role or roles we wanted to have access:
-```{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "AWS": "arn:aws:iam::AccountId:role/EC2RoleToAccessSecrets"
-      },
-      "Action": "secretsmanager:GetSecretValue",
-      "Resource": "*"
-    }
-  ]
-}
+terragrunt init
+terragrunt plan
+terragrunt run-all apply --auto-approve
 ```
-## Retrieve secret's value in powershell
-Once we created the secret and gave proper permissions to access it from a specific role we can retrieve it's value to use it in scripts or templates. Here is an example of how to use it in powershell:
-* We first need a library to be installed in our system to use the command we need for managing aws secrets manager, we can install from here:
 
-https://www.powershellgallery.com/packages/AWS.Tools.SecretsManager/4.1.78
-* Use this command to retrive the secret's value replacing the secrets ARN and KEY from the key/value pair we created, we can store it in a variable like this:
-
-```$password= Get-SECSecretValue -SecretId arn:secret_arn_here -Select SecretString | ConvertFrom-Json | Select -ExpandProperty KEY ```
+To tear down:
+```shell
+terragrunt run-all destroy --auto-approve
+```
